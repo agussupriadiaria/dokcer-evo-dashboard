@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - wordpress_network
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress-container
+    depends_on:
+      - mysql
+    environment:
+      WORDPRESS_DB_HOST: mysql-container
+      WORDPRESS_DB_USER: ${WORDPRESS_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_PASSWORD}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+    ports:
+      - "80:80"
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./php.ini/custom.ini:/usr/local/etc/php/conf.d/docker-php-ext-custom.ini # Tambahan konfigurasi PHP
+    networks:
+      - wordpress_network
+
+  php:
+    image: php:7.4-apache
+    container_name: php-container
+    depends_on:
+      - wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./php.ini/custom.ini:/usr/local/etc/php/conf.d/docker-php-ext-custom.ini # Tambahan konfigurasi PHP
+    ports:
+      - "8080:80"
+    networks:
+      - wordpress_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin-container
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql-container
+      PMA_PORT: 3306
+      PMA_USER: ${PMA_USER:-root}
+      PMA_PASSWORD: ${PMA_PASSWORD:-${MYSQL_ROOT_PASSWORD}}
+      PMA_ARBITRARY: 0
+    ports:
+      - "8081:80"
+    networks:
+      - wordpress_network
+
+networks:
+  wordpress_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  wordpress_data:
